@@ -60,7 +60,14 @@ export async function finalizeRoll(roundId: string, dice: number, questionId: st
   });
 }
 
-export async function setAnswer(roundId: string, teamId: string, content: string, autoSubmitted: boolean): Promise<void> {
+export async function setAnswer(
+  roundId: string,
+  teamId: string,
+  content: string,
+  autoSubmitted: boolean,
+  selectedOptionIndex?: number,
+  reason?: string
+): Promise<void> {
   // Prevent disqualified teams from submitting answers
   const teamSnap = await getDoc(refs.team(teamId));
   const team = teamSnap.data() as Team | undefined;
@@ -72,6 +79,8 @@ export async function setAnswer(roundId: string, teamId: string, content: string
     roundId,
     teamId,
     content,
+    selectedOptionIndex,
+    reason,
     isAutoSubmitted: autoSubmitted,
     submittedAt: now,
     createdAt: now,

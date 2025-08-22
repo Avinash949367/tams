@@ -18,6 +18,9 @@ export default function PlayPage() {
   const [isDisqualified, setIsDisqualified] = useState<boolean>(false);
   const [round, setRound] = useState<Round | null>(null);
   const [question, setQuestion] = useState<string>("");
+  const [options, setOptions] = useState<string[]>([]);
+  const [selectedOptionIndex, setSelectedOptionIndex] = useState<number | undefined>(undefined);
+  const [reason, setReason] = useState("");
   const [remaining, setRemaining] = useState<number>(0);
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -35,10 +38,13 @@ export default function PlayPage() {
           setRound(rd);
           if (rd.questionId) {
             getDoc(doc(getDb(), "questions", rd.questionId)).then((qSnap) => {
-              setQuestion((qSnap.data() as { text: string })?.text ?? "");
+              const q = qSnap.data() as { text: string; options?: string[] } | undefined;
+              setQuestion(q?.text ?? "");
+              setOptions(q?.options ?? []);
             });
           } else {
             setQuestion("");
+            setOptions([]);
           }
         });
         return () => unsubRound();
@@ -60,8 +66,8 @@ export default function PlayPage() {
 
   const autoSubmit = useCallback(async () => {
     if (!teamId || !round?.id || isDisqualified) return;
-    await setAnswer(round.id, teamId, content, true);
-  }, [teamId, round?.id, content, isDisqualified]);
+    await setAnswer(round.id, teamId, content, true, selectedOptionIndex, reason);
+  }, [teamId, round?.id, content, isDisqualified, selectedOptionIndex, reason]);
 
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -87,7 +93,7 @@ export default function PlayPage() {
     if (!teamId || !round?.id || isDisqualified) return;
     setSubmitting(true);
     try {
-      await setAnswer(round.id, teamId, content, false);
+      await setAnswer(round.id, teamId, content, false, selectedOptionIndex, reason);
     } finally {
       setSubmitting(false);
     }
@@ -189,8 +195,33 @@ export default function PlayPage() {
                   {question || "Loading question..."}
                 </div>
               </div>
+              {options.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Select an option</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {options.map((opt, idx) => (
+                      <label key={idx} className={`flex items-center gap-3 p-3 border rounded cursor-pointer ${selectedOptionIndex === idx ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-600'}`}>
+                        <input
+                          type="radio"
+                          name="answerOption"
+                          checked={selectedOptionIndex === idx}
+                          onChange={() => setSelectedOptionIndex(idx)}
+                        />
+                        <span className="text-sm">{opt}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
               
               <form onSubmit={onSubmit} className="space-y-4">
+                <Textarea 
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="Why did you choose that answer?"
+                  className="min-h-[100px]"
+                  label="Reason"
+                />
                 <Textarea 
                   value={content} 
                   onChange={(e) => setContent(e.target.value)} 
@@ -204,7 +235,7 @@ export default function PlayPage() {
                   </div>
                   <Button 
                     type="submit" 
-                    disabled={submitting || !content.trim()}
+                    disabled={submitting || (!content.trim() && (options.length > 0 && selectedOptionIndex === undefined))}
                     loading={submitting}
                     className="min-w-[120px]"
                   >

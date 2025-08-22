@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getDocs, collection, updateDoc } from "firebase/firestore";
+import { getDocs, collection, updateDoc, doc, getDoc } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import { startRoll, finalizeRoll, beginEvaluation, awardAndDisqualify, scoreTeam, refs } from "@/lib/db";
 import { subscribeDoc } from "@/lib/realtime";
@@ -35,6 +35,11 @@ export default function AdminPage() {
   const [currentRound, setCurrentRound] = useState<Round | null>(null);
   const [teams, setTeams] = useState<TeamData[]>([]);
   const [answers, setAnswers] = useState<AnswerData[]>([]);
+  const [questionText, setQuestionText] = useState("");
+  const [questionOptions, setQuestionOptions] = useState<string[]>([]);
+  const [isAuthed, setIsAuthed] = useState(false);
+  const [uname, setUname] = useState("");
+  const [pass, setPass] = useState("");
 
   useEffect(() => {
     async function fetchVenues() {
@@ -66,10 +71,22 @@ export default function AdminPage() {
       if (venue?.currentRoundId) {
         const unsubRound = subscribeDoc<Round>({ col: "rounds", id: venue.currentRoundId }, (round) => {
           setCurrentRound(round);
+          if (round?.questionId) {
+            getDoc(doc(getDb(), "questions", round.questionId)).then((qSnap) => {
+              const q = qSnap.data() as { text?: string; options?: string[] } | undefined;
+              setQuestionText(q?.text ?? "");
+              setQuestionOptions(q?.options ?? []);
+            });
+          } else {
+            setQuestionText("");
+            setQuestionOptions([]);
+          }
         });
         return () => unsubRound();
       } else {
         setCurrentRound(null);
+        setQuestionText("");
+        setQuestionOptions([]);
       }
     });
 
@@ -179,6 +196,17 @@ export default function AdminPage() {
     }
   }
 
+  function handleAdminLogin(e: React.FormEvent) {
+    e.preventDefault();
+    if (uname === "admin" && pass === "admin123") {
+      setIsAuthed(true);
+      setError("");
+    } else {
+      setIsAuthed(false);
+      setError("Invalid admin credentials.");
+    }
+  }
+
   async function handleDisqualifyTeam(teamId: string) {
     setIsLoading(true);
     setError("");
@@ -250,6 +278,18 @@ export default function AdminPage() {
         </Notice>
       )}
 
+      {!isAuthed && (
+        <Card>
+          <CardHeader title="Admin Login" />
+          <form onSubmit={handleAdminLogin} className="space-y-4">
+            <Input label="Username" value={uname} onChange={(e) => setUname(e.target.value)} placeholder="admin" />
+            <Input label="Password" type="password" value={pass} onChange={(e) => setPass(e.target.value)} placeholder="admin123" />
+            <Button type="submit" className="w-full">Login</Button>
+          </form>
+        </Card>
+      )}
+
+      {isAuthed && (
       <Card>
         <CardHeader title="Venue Selection" />
         <div className="space-y-4">
@@ -275,8 +315,9 @@ export default function AdminPage() {
           )}
         </div>
       </Card>
+      )}
 
-      {selectedVenueId && (
+      {isAuthed && selectedVenueId && (
         <>
           <Card>
             <CardHeader title="Round Control" />
@@ -307,6 +348,16 @@ export default function AdminPage() {
                   <div className="text-sm text-blue-700 dark:text-blue-300">
                     Round Status: <span className="font-medium">{getRoundStatusText()}</span>
                   </div>
+                  {questionText && (
+                    <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">
+                      Question: {questionText}
+                    </div>
+                  )}
+                  {questionOptions.length > 0 && (
+                    <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">
+                      Options: {questionOptions.map((o, i) => `${i + 1}. ${o}`).join("  ")}
+                    </div>
+                  )}
                   {currentRound.dice && (
                     <div className="mt-2">
                       <div className="text-sm text-blue-700 dark:text-blue-300 mb-2">Dice Result:</div>
@@ -411,6 +462,26 @@ export default function AdminPage() {
                                 {teamAnswer.content}
                               </div>
                             </div>
+                            {(teamAnswer.selectedOptionIndex !== undefined) && (
+                              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded">
+                                <div className="text-sm font-medium mb-2">Selected Option:</div>
+                                <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                                  {(() => {
+                                    const idx = teamAnswer.selectedOptionIndex as number;
+                                    const text = questionOptions[idx] ?? `Option ${idx + 1}`;
+                                    return `${idx + 1}. ${text}`;
+                                  })()}
+                                </div>
+                              </div>
+                            )}
+                            {teamAnswer.reason && (
+                              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded">
+                                <div className="text-sm font-medium mb-2">Reason:</div>
+                                <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                                  {teamAnswer.reason}
+                                </div>
+                              </div>
+                            )}
                             
                             {/* Scoring Section */}
                             <div className="flex items-center gap-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded">

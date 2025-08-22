@@ -10,6 +10,7 @@ export interface Venue {
 export interface Question {
   id: string;
   text: string;
+  options?: string[]; // Up to 4 options
   answer?: string;
   points?: number;
   category?: string;
@@ -45,6 +46,8 @@ export interface Answer {
   roundId: string;
   teamId: string;
   content: string;
+  selectedOptionIndex?: number;
+  reason?: string;
   isAutoSubmitted: boolean;
   score?: number;
   feedback?: string;
