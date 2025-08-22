@@ -10,12 +10,13 @@ import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Input";
 import { Dice } from "@/components/ui/Dice";
-import type { Round, Venue } from "@/lib/types";
+import type { Round, Venue, Team } from "@/lib/types";
 
 export default function PlayPage() {
   const router = useRouter();
   const { teamId, teamName, venueId } = useSessionStore();
   const [isDisqualified, setIsDisqualified] = useState<boolean>(false);
+  const [teamData, setTeamData] = useState<Team | null>(null);
   const [round, setRound] = useState<Round | null>(null);
   const [question, setQuestion] = useState<string>("");
   const [options, setOptions] = useState<string[]>([]);
@@ -60,6 +61,7 @@ export default function PlayPage() {
     if (!teamId) return;
     const unsubTeam = subscribeDoc({ col: "teams", id: teamId }, (t) => {
       setIsDisqualified(Boolean(t?.isDisqualified));
+      setTeamData(t);
     });
     return () => unsubTeam();
   }, [teamId]);
@@ -128,6 +130,11 @@ export default function PlayPage() {
             <div>
               <div className="text-sm text-gray-500 dark:text-gray-400">Team</div>
               <div className="font-semibold text-lg text-gray-900 dark:text-white">{teamName}</div>
+              {teamData && (
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Score: {teamData.totalScore || 0} pts • Currency: ${teamData.currency || 0} • Rounds: {teamData.roundsParticipated || 0}
+                </div>
+              )}
             </div>
           </div>
           <div className="text-center sm:text-right">

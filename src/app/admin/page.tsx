@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getDocs, collection, updateDoc, doc, getDoc } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
-import { startRoll, finalizeRoll, beginEvaluation, awardAndDisqualify, scoreTeam, endGame, refs } from "@/lib/db";
+import { startRoll, finalizeRoll, beginEvaluation, awardAndDisqualify, scoreTeam, endGame, getTeamRankings, refs } from "@/lib/db";
 import { subscribeDoc } from "@/lib/realtime";
 import { signInAnonymously, getAuth } from "firebase/auth";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -41,6 +41,7 @@ export default function AdminPage() {
   const [uname, setUname] = useState("");
   const [pass, setPass] = useState("");
   const [gameEnded, setGameEnded] = useState(false);
+  const [rankings, setRankings] = useState<TeamData[]>([]);
 
   useEffect(() => {
     async function fetchVenues() {
@@ -100,6 +101,9 @@ export default function AdminPage() {
           .map(doc => ({ id: doc.id, ...doc.data() } as TeamData))
           .filter((team: TeamData) => team.venueId === selectedVenueId);
         setTeams(teamsData);
+        
+        // Update rankings
+        refreshRankings();
       });
     });
 
@@ -107,7 +111,7 @@ export default function AdminPage() {
       unsubVenue();
       unsubTeams();
     };
-  }, [selectedVenueId]);
+  }, [selectedVenueId, refreshRankings]);
 
   useEffect(() => {
     if (!currentRound?.id) return;
@@ -198,6 +202,16 @@ export default function AdminPage() {
       setIsLoading(false);
     }
   }
+
+  const refreshRankings = useCallback(async () => {
+    if (!selectedVenueId) return;
+    try {
+      const rankingsData = await getTeamRankings(selectedVenueId);
+      setRankings(rankingsData);
+    } catch (err) {
+      console.error("Error fetching rankings:", err);
+    }
+  }, [selectedVenueId]);
 
   function handleAdminLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -440,6 +454,60 @@ export default function AdminPage() {
           </Card>
 
           <Card>
+            <CardHeader title="Leaderboard" />
+            <div className="space-y-4">
+              {rankings.length === 0 ? (
+                <div className="text-center text-gray-500 py-8">
+                  No team data available
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {rankings.map((team, index) => (
+                    <div key={team.id} className={`flex items-center justify-between p-3 rounded-lg border ${
+                      team.isDisqualified 
+                        ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' 
+                        : 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                          index === 0 ? 'bg-yellow-400 text-yellow-900' :
+                          index === 1 ? 'bg-gray-400 text-gray-900' :
+                          index === 2 ? 'bg-amber-600 text-amber-100' :
+                          'bg-blue-500 text-white'
+                        }`}>
+                          {index + 1}
+                        </div>
+                        <div>
+                          <div className="font-semibold">{team.name}</div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            Rounds: {team.roundsParticipated || 0}
+                            {team.isDisqualified && team.disqualifiedInRound && (
+                              <span className="ml-2 text-red-600">
+                                (Eliminated in Round {team.disqualifiedInRound})
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-lg">{team.totalScore || 0} pts</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          ${team.currency || 0}
+                          {team.lastRoundScore !== undefined && (
+                            <span className="ml-1 text-green-600">
+                              (+{team.lastRoundScore})
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Card>
+
+          <Card>
             <CardHeader title="Teams & Answers" />
             <div className="space-y-4">
               {teams.length === 0 ? (
@@ -461,11 +529,22 @@ export default function AdminPage() {
                                   ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300' 
                                   : 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300'
                               }`}>
-                                {team.isDisqualified ? "Disqualified" : "Active"}
+                                {team.isDisqualified ? `Eliminated R${team.disqualifiedInRound || '?'}` : "Active"}
+                              </span>
+                              <span className="text-gray-600 dark:text-gray-400">
+                                Score: {team.totalScore || 0} pts
                               </span>
                               <span className="text-gray-600 dark:text-gray-400">
                                 Currency: ${team.currency || 0}
                               </span>
+                              <span className="text-gray-600 dark:text-gray-400">
+                                Rounds: {team.roundsParticipated || 0}
+                              </span>
+                              {team.lastRoundScore !== undefined && (
+                                <span className="text-green-600 dark:text-green-400">
+                                  Last: +{team.lastRoundScore}
+                                </span>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-2">

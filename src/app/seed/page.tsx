@@ -60,7 +60,9 @@ export default function SeedPage() {
           isActive: true, 
           currentRoundId: null, 
           cooldownUntil: null,
-          gameEnded: false
+          gameEnded: false,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
         });
       }
       

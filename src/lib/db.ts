@@ -23,6 +23,8 @@ export async function registerTeam(name: string, venueId: string): Promise<Team>
     name,
     venueId,
     currency: 0,
+    totalScore: 0,
+    roundsParticipated: 0,
     isDisqualified: false,
     createdAt: now,
     updatedAt: now,
@@ -114,23 +116,44 @@ export async function awardAndDisqualify(venueId: string, disqualifiedTeamIds: s
   const currentRoundId = (venueSnap.data() as { currentRoundId?: string })?.currentRoundId as string | undefined;
   if (!currentRoundId) return;
 
-  // Award currency up to max 1000
+  // Get current round number by counting rounds for this venue
+  const roundsQ = query(refs.rounds(), where("venueId", "==", venueId));
+  const roundsSnap = await getDocs(roundsQ);
+  const currentRoundNumber = roundsSnap.size;
+
+  // Award currency and update team stats
   const answersQ = query(refs.answers(), where("roundId", "==", currentRoundId));
   const answers = await getDocs(answersQ);
   for (const ans of answers.docs) {
     const a = ans.data() as Answer;
-    if (a.score && a.score > 0) {
-      const teamRef = refs.team(a.teamId);
-      const teamSnap = await getDoc(teamRef);
-      const team = teamSnap.data() as Team;
-      const newCurrency = Math.min(1000, (team?.currency ?? 0) + a.score);
-      await updateDoc(teamRef, { currency: newCurrency, updatedAt: Date.now() });
+    const score = a.score || 0;
+    
+    const teamRef = refs.team(a.teamId);
+    const teamSnap = await getDoc(teamRef);
+    const team = teamSnap.data() as Team;
+    
+    if (team && !team.isDisqualified) {
+      const newCurrency = Math.min(1000, (team.currency || 0) + score);
+      const newTotalScore = (team.totalScore || 0) + score;
+      const newRoundsParticipated = (team.roundsParticipated || 0) + 1;
+      
+      await updateDoc(teamRef, { 
+        currency: newCurrency,
+        totalScore: newTotalScore,
+        roundsParticipated: newRoundsParticipated,
+        lastRoundScore: score,
+        updatedAt: Date.now() 
+      });
     }
   }
 
-  // Disqualify lowest scoring teams (permanent - no clearing of previous disqualifications)
+  // Disqualify teams and record which round they were eliminated
   for (const teamId of disqualifiedTeamIds) {
-    await updateDoc(refs.team(teamId), { isDisqualified: true, updatedAt: Date.now() });
+    await updateDoc(refs.team(teamId), { 
+      isDisqualified: true, 
+      disqualifiedInRound: currentRoundNumber,
+      updatedAt: Date.now() 
+    });
   }
 
   // Set cooldown
@@ -141,13 +164,30 @@ export async function awardAndDisqualify(venueId: string, disqualifiedTeamIds: s
   });
 }
 
+export async function getTeamRankings(venueId: string): Promise<Team[]> {
+  const teamsQ = query(refs.teams(), where("venueId", "==", venueId));
+  const teams = await getDocs(teamsQ);
+  const teamData = teams.docs.map(doc => ({ id: doc.id, ...doc.data() } as Team));
+  
+  // Sort by totalScore descending, then by currency, then by rounds participated
+  return teamData.sort((a, b) => {
+    if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+    if (b.currency !== a.currency) return b.currency - a.currency;
+    return b.roundsParticipated - a.roundsParticipated;
+  });
+}
+
 export async function endGame(venueId: string): Promise<void> {
   // Mark all teams as inactive and clear current round
   const teamsQ = query(refs.teams(), where("venueId", "==", venueId));
   const teams = await getDocs(teamsQ);
+  const currentRoundNumber = teams.size; // Approximate round number
+  
   for (const team of teams.docs) {
+    const teamData = team.data() as Team;
     await updateDoc(refs.team(team.id), { 
-      isDisqualified: true, 
+      isDisqualified: true,
+      disqualifiedInRound: teamData.disqualifiedInRound || currentRoundNumber,
       updatedAt: Date.now() 
     });
   }

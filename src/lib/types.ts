@@ -24,7 +24,11 @@ export interface Team {
   name: string;
   venueId: string;
   currency: number;
+  totalScore: number;
+  roundsParticipated: number;
+  lastRoundScore?: number;
   isDisqualified: boolean;
+  disqualifiedInRound?: number;
   createdAt: number;
   updatedAt: number;
 }
