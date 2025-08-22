@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getDocs, collection } from "firebase/firestore";
+import { getDocs, collection, updateDoc } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
-import { startRoll, finalizeRoll, beginEvaluation, awardAndDisqualify } from "@/lib/db";
+import { startRoll, finalizeRoll, beginEvaluation, awardAndDisqualify, scoreTeam, refs } from "@/lib/db";
 import { subscribeDoc } from "@/lib/realtime";
 import { signInAnonymously, getAuth } from "firebase/auth";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -165,6 +165,37 @@ export default function AdminPage() {
     }
   }
 
+  async function handleScoreAnswer(answerId: string, score: number) {
+    setIsLoading(true);
+    setError("");
+    
+    try {
+      await scoreTeam(answerId, score);
+    } catch (err) {
+      console.error("Error scoring answer:", err);
+      setError("Failed to score answer. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleDisqualifyTeam(teamId: string) {
+    setIsLoading(true);
+    setError("");
+    
+    try {
+      await updateDoc(refs.team(teamId), { 
+        isDisqualified: true, 
+        updatedAt: Date.now() 
+      });
+    } catch (err) {
+      console.error("Error disqualifying team:", err);
+      setError("Failed to disqualify team. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   async function handleAwardAndDisqualify() {
     if (!selectedVenueId) {
       setError("No venue selected.");
@@ -262,7 +293,7 @@ export default function AdminPage() {
                 <div className="flex items-end">
                   <Button
                     onClick={handleStartRoll}
-                    disabled={isLoading || (currentRound && currentRound.state !== "waiting")}
+                    disabled={isLoading || Boolean(currentRound && currentRound.state !== "waiting")}
                     loading={isLoading}
                     className="w-full"
                   >
@@ -286,7 +317,7 @@ export default function AdminPage() {
               ) : (
                 <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                   <div className="text-sm text-green-700 dark:text-green-300">
-                    <span className="font-medium">Ready to start!</span> - No active round. Click "Start Roll" to begin a new game round.
+                    <span className="font-medium">Ready to start!</span> - No active round. Click &quot;Start Roll&quot; to begin a new game round.
                   </div>
                 </div>
               )}
@@ -333,26 +364,106 @@ export default function AdminPage() {
                     const teamAnswer = answers.find(a => a.teamId === team.id);
                     return (
                       <div key={team.id} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center justify-between mb-3">
                           <div>
-                            <div className="font-semibold">{team.name}</div>
-                            <div className="text-sm text-gray-500">
-                              {team.isDisqualified ? "Disqualified" : "Active"}
+                            <div className="font-semibold text-lg">{team.name}</div>
+                            <div className="flex items-center gap-4 text-sm">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                team.isDisqualified 
+                                  ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300' 
+                                  : 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300'
+                              }`}>
+                                {team.isDisqualified ? "Disqualified" : "Active"}
+                              </span>
+                              <span className="text-gray-600 dark:text-gray-400">
+                                Currency: ${team.currency || 0}
+                              </span>
                             </div>
                           </div>
-                          {teamAnswer && (
-                            <div className="text-sm text-gray-600">
-                              {teamAnswer.isAutoSubmitted ? "Auto-submitted" : "Submitted"}
-                            </div>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {teamAnswer && (
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                teamAnswer.isAutoSubmitted 
+                                  ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300'
+                                  : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300'
+                              }`}>
+                                {teamAnswer.isAutoSubmitted ? "Auto-submitted" : "Submitted"}
+                              </span>
+                            )}
+                            {!team.isDisqualified && (
+                              <Button
+                                onClick={() => handleDisqualifyTeam(team.id)}
+                                variant="destructive"
+                                size="sm"
+                                disabled={isLoading}
+                              >
+                                Disqualify
+                              </Button>
+                            )}
+                          </div>
                         </div>
                         
                         {teamAnswer && (
-                          <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800 rounded">
-                            <div className="text-sm font-medium mb-1">Answer:</div>
-                            <div className="text-sm text-gray-700 dark:text-gray-300">
-                              {teamAnswer.content}
+                          <div className="space-y-3">
+                            <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded">
+                              <div className="text-sm font-medium mb-2">Answer:</div>
+                              <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                                {teamAnswer.content}
+                              </div>
                             </div>
+                            
+                            {/* Scoring Section */}
+                            <div className="flex items-center gap-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium">Score:</span>
+                                <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                                  {teamAnswer.score !== undefined ? teamAnswer.score : 'Not scored'}
+                                </span>
+                              </div>
+                              
+                              {teamAnswer.score === undefined && (
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    placeholder="0-100"
+                                    className="w-20"
+                                                                         onKeyDown={(e) => {
+                                       if (e.key === "Enter") {
+                                         const score = parseInt((e.target as HTMLInputElement).value);
+                                         if (!isNaN(score) && score >= 0 && score <= 100) {
+                                           handleScoreAnswer(teamAnswer.id, score);
+                                         }
+                                       }
+                                     }}
+                                  />
+                                  <Button
+                                    onClick={() => {
+                                      const input = document.querySelector(`input[placeholder="0-100"]`) as HTMLInputElement;
+                                      const score = parseInt(input?.value || '0');
+                                      if (!isNaN(score) && score >= 0 && score <= 100) {
+                                        handleScoreAnswer(teamAnswer.id, score);
+                                      }
+                                    }}
+                                    variant="secondary"
+                                    size="sm"
+                                    disabled={isLoading}
+                                  >
+                                    Score
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {teamAnswer.feedback && (
+                              <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+                                <div className="text-sm font-medium mb-1">Feedback:</div>
+                                <div className="text-sm text-gray-700 dark:text-gray-300">
+                                  {teamAnswer.feedback}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
