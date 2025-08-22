@@ -1,5 +1,5 @@
 "use client";
-import { collection, doc, setDoc, getDocs } from "firebase/firestore";
+import { collection, doc, setDoc, getDocs, deleteDoc } from "firebase/firestore";
 import { getDb, getFirebaseAuth } from "@/lib/firebase";
 import { useEffect, useState } from "react";
 
@@ -24,6 +24,23 @@ export default function SeedPage() {
     }).catch(() => {});
   }, []);
 
+  async function clearQuestions() {
+    setErr("");
+    setDone("");
+    try {
+      await getFirebaseAuth();
+      const db = getDb();
+      const questionsSnap = await getDocs(collection(db, "questions"));
+      for (const q of questionsSnap.docs) {
+        await deleteDoc(q.ref);
+      }
+      setDone("Cleared all existing questions.");
+    } catch (e: unknown) {
+      const error = e as { message?: string };
+      setErr(error?.message || "Failed to clear questions.");
+    }
+  }
+
   async function seed() {
     setErr("");
     setDone("");
@@ -42,20 +59,79 @@ export default function SeedPage() {
           name: v, 
           isActive: true, 
           currentRoundId: null, 
-          cooldownUntil: null 
+          cooldownUntil: null,
+          gameEnded: false
         });
       }
+      
+      // Questions with multiple choice options
       const questions = [
-        "Explain the concept of supply and demand.",
-        "What strategies would you use to pitch a new product?",
-        "Describe a time you solved a complex problem.",
-        "How would you allocate a budget of $10,000 across marketing channels?",
+        {
+          text: "What is the primary goal of a business?",
+          options: [
+            "To make money",
+            "To help people",
+            "To create jobs",
+            "To innovate technology"
+          ]
+        },
+        {
+          text: "Which marketing strategy focuses on building long-term customer relationships?",
+          options: [
+            "Transactional marketing",
+            "Relationship marketing", 
+            "Mass marketing",
+            "Direct marketing"
+          ]
+        },
+        {
+          text: "What is the main advantage of diversification in business?",
+          options: [
+            "Reduced risk",
+            "Lower costs",
+            "Faster growth",
+            "Simpler operations"
+          ]
+        },
+        {
+          text: "Which financial statement shows a company's profitability over time?",
+          options: [
+            "Balance sheet",
+            "Income statement",
+            "Cash flow statement",
+            "Statement of equity"
+          ]
+        },
+        {
+          text: "What is the key principle of supply and demand?",
+          options: [
+            "Price increases with demand",
+            "Supply always equals demand",
+            "Price decreases with supply",
+            "Market equilibrium"
+          ]
+        },
+        {
+          text: "Which leadership style encourages team input and collaboration?",
+          options: [
+            "Autocratic",
+            "Democratic",
+            "Laissez-faire",
+            "Transactional"
+          ]
+        }
       ];
+      
       for (let i = 0; i < questions.length; i++) {
         const id = `q${i + 1}`;
-        await setDoc(doc(db, "questions", id), { text: questions[i] });
+        await setDoc(doc(db, "questions", id), { 
+          text: questions[i].text,
+          options: questions[i].options,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        });
       }
-      setDone("Seeded venues and questions.");
+      setDone("Seeded venues and multiple-choice questions.");
     } catch (e: unknown) {
       const error = e as { message?: string };
       setErr(error?.message || "Failed to seed. Check Firestore rules and auth.");
@@ -73,7 +149,10 @@ export default function SeedPage() {
           placeholder="a,b,c,d,e,f,g" 
         />
       </div>
-      <button onClick={seed} className="bg-black text-white px-4 py-2 rounded">Seed</button>
+      <div className="flex gap-2">
+        <button onClick={seed} className="bg-black text-white px-4 py-2 rounded">Seed Questions & Venues</button>
+        <button onClick={clearQuestions} className="bg-red-600 text-white px-4 py-2 rounded">Clear Questions</button>
+      </div>
       {done && <div className="mt-4 text-green-700 bg-green-50 border border-green-200 px-3 py-2 rounded">{done}</div>}
       {err && (
         <div className="mt-4 text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded">
@@ -91,8 +170,16 @@ export default function SeedPage() {
         )}
       </div>
       <div className="mt-4 text-xs text-gray-600">
-        If you see permission errors:
+        <p className="font-semibold mb-2">New Features:</p>
+        <ul className="list-disc ml-5 space-y-1">
+          <li>Questions now have 4 multiple-choice options</li>
+          <li>Players must select an option and provide a reason</li>
+          <li>Admin can see selected option and reason for evaluation</li>
+        </ul>
+        <p className="font-semibold mt-4 mb-2">Setup Instructions:</p>
         <ol className="list-decimal ml-5 mt-1 space-y-1">
+          <li>Click &quot;Clear Questions&quot; to remove old questions</li>
+          <li>Click &quot;Seed Questions &amp; Venues&quot; to create new multiple-choice questions</li>
           <li>Enable Anonymous sign-in: Firebase Console → Authentication → Sign-in method → Anonymous → Enable.</li>
           <li>Set Firestore dev rules to allow authenticated users (including anonymous) read/write and Publish.</li>
         </ol>
