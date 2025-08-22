@@ -1,6 +1,6 @@
-import { collection, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, Timestamp, updateDoc, where, addDoc, getDocs, orderBy, limit } from "firebase/firestore";
+import { collection, doc, getDoc, setDoc, updateDoc, addDoc, getDocs, query, where } from "firebase/firestore";
 import { getDb } from "./firebase";
-import type { Venue, Team, Question, Round, Answer } from "./types";
+import type { Team, Round, Answer } from "./types";
 
 const db = getDb();
 
@@ -18,33 +18,38 @@ export const refs = {
 };
 
 export async function registerTeam(name: string, venueId: string): Promise<Team> {
-  const teamDoc = await addDoc(refs.teams(), {
+  const now = Date.now();
+  const teamData = {
     name,
     venueId,
     currency: 0,
     isDisqualified: false,
-    createdAt: Date.now(),
-  } as Omit<Team, "id">);
-  return { id: teamDoc.id, name, venueId, currency: 0, isDisqualified: false, createdAt: Date.now() };
+    createdAt: now,
+    updatedAt: now,
+  };
+  const teamDoc = await addDoc(refs.teams(), teamData);
+  return { id: teamDoc.id, ...teamData };
 }
 
 export async function startRoll(venueId: string): Promise<Round> {
   const venueSnap = await getDoc(refs.venue(venueId));
-  const venue = venueSnap.data() as any;
+  const venue = venueSnap.data() as { cooldownUntil?: number };
   const now = Date.now();
   if (venue?.cooldownUntil && venue.cooldownUntil > now) {
     throw new Error("Cooldown active. Please wait before starting next roll.");
   }
-  const roundDoc = await addDoc(refs.rounds(), {
+  const roundData = {
     venueId,
-    dice: null,
-    questionId: null,
-    state: "rolling",
-    rollStartedAt: Date.now(),
-  } as Omit<Round, "id">);
+    dice: undefined,
+    questionId: undefined,
+    state: "rolling" as const,
+    rollStartedAt: now,
+    createdAt: now,
+    updatedAt: now,
+  };
+  const roundDoc = await addDoc(refs.rounds(), roundData);
   await updateDoc(refs.venue(venueId), { currentRoundId: roundDoc.id });
-  const snap = await getDoc(roundDoc);
-  return { id: roundDoc.id, ...(snap.data() as any) } as Round;
+  return { id: roundDoc.id, ...roundData };
 }
 
 export async function finalizeRoll(roundId: string, dice: number, questionId: string, answerDurationMs: number = 60_000): Promise<void> {
@@ -53,36 +58,41 @@ export async function finalizeRoll(roundId: string, dice: number, questionId: st
     questionId,
     state: "answering",
     answerEndsAt: Date.now() + answerDurationMs,
+    updatedAt: Date.now(),
   });
 }
 
 export async function setAnswer(roundId: string, teamId: string, content: string, autoSubmitted: boolean): Promise<void> {
-  const id = `${teamId}_${roundId}`;
-  await setDoc(refs.answer(id), {
-    id,
+  const now = Date.now();
+  const answerData = {
     roundId,
     teamId,
     content,
-    submittedAt: Date.now(),
-    autoSubmitted,
-  } as Answer);
+    isAutoSubmitted: autoSubmitted,
+    submittedAt: now,
+    createdAt: now,
+    updatedAt: now,
+  };
+  const id = `${teamId}_${roundId}`;
+  await setDoc(refs.answer(id), answerData);
 }
 
 export async function beginEvaluation(roundId: string): Promise<void> {
   await updateDoc(refs.round(roundId), {
     state: "evaluating",
     evaluateEndsAt: Date.now() + 5 * 60_000,
+    updatedAt: Date.now(),
   });
 }
 
 export async function scoreTeam(answerId: string, score: number): Promise<void> {
-  await updateDoc(refs.answer(answerId), { score });
+  await updateDoc(refs.answer(answerId), { score, updatedAt: Date.now() });
 }
 
 export async function awardAndDisqualify(venueId: string, disqualifiedTeamIds: string[]): Promise<void> {
   // Fetch answers for last round
   const venueSnap = await getDoc(refs.venue(venueId));
-  const currentRoundId = (venueSnap.data() as any)?.currentRoundId as string | undefined;
+  const currentRoundId = (venueSnap.data() as { currentRoundId?: string })?.currentRoundId as string | undefined;
   if (!currentRoundId) return;
 
   // Award currency up to max 1000
@@ -95,17 +105,21 @@ export async function awardAndDisqualify(venueId: string, disqualifiedTeamIds: s
       const teamSnap = await getDoc(teamRef);
       const team = teamSnap.data() as Team;
       const newCurrency = Math.min(1000, (team?.currency ?? 0) + a.score);
-      await updateDoc(teamRef, { currency: newCurrency });
+      await updateDoc(teamRef, { currency: newCurrency, updatedAt: Date.now() });
     }
   }
-  // Disqualify lowest scored or provided list
-  for (const id of disqualifiedTeamIds) {
-    await updateDoc(refs.team(id), { isDisqualified: true });
+
+  // Disqualify lowest scoring teams
+  for (const teamId of disqualifiedTeamIds) {
+    await updateDoc(refs.team(teamId), { isDisqualified: true, updatedAt: Date.now() });
   }
 
-  // Set cooldown 15s
-  await updateDoc(refs.venue(venueId), { cooldownUntil: Date.now() + 15_000, currentRoundId: null });
-  await updateDoc(refs.round(currentRoundId), { state: "completed" });
+  // Set cooldown
+  await updateDoc(refs.venue(venueId), { 
+    currentRoundId: null, 
+    cooldownUntil: Date.now() + 30_000,
+    updatedAt: Date.now(),
+  });
 }
 
 

@@ -20,9 +20,9 @@ export function Dice({ value, rolling, size = "md", className }: DiceProps) {
     const iv = setInterval(() => {
       setDisplay(Math.floor(Math.random() * 6) + 1);
       ticks++;
-      if (ticks > 20) clearInterval(iv as any);
+      if (ticks > 20) clearInterval(iv);
     }, 80);
-    return () => clearInterval(iv as any);
+    return () => clearInterval(iv);
   }, [rolling, value]);
 
   const sizeClasses = {

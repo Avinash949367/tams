@@ -1,21 +1,22 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSessionStore } from "@/store/useSessionStore";
 import { doc, getDoc } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
-import { refs, setAnswer } from "@/lib/db";
+import { setAnswer } from "@/lib/db";
 import { subscribeDoc } from "@/lib/realtime";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Input";
 import { Dice } from "@/components/ui/Dice";
+import type { Round, Venue } from "@/lib/types";
 
 export default function PlayPage() {
   const router = useRouter();
   const { teamId, teamName, venueId } = useSessionStore();
   const [isDisqualified, setIsDisqualified] = useState<boolean>(false);
-  const [round, setRound] = useState<any>(null);
+  const [round, setRound] = useState<Round | null>(null);
   const [question, setQuestion] = useState<string>("");
   const [remaining, setRemaining] = useState<number>(0);
   const [content, setContent] = useState("");
@@ -27,14 +28,15 @@ export default function PlayPage() {
       router.replace("/register");
       return;
     }
-    const unsubVenue = subscribeDoc({ col: "venues", id: venueId }, async (data) => {
+    const unsubVenue = subscribeDoc<Venue>({ col: "venues", id: venueId }, (data) => {
       if (data?.currentRoundId) {
-        const unsubRound = subscribeDoc({ col: "rounds", id: data.currentRoundId }, async (rd) => {
+        const unsubRound = subscribeDoc<Round>({ col: "rounds", id: data.currentRoundId }, (rd) => {
           if (!rd) { setRound(null); setQuestion(""); return; }
           setRound(rd);
           if (rd.questionId) {
-            const qSnap = await getDoc(doc(getDb(), "questions", rd.questionId));
-            setQuestion((qSnap.data() as any)?.text ?? "");
+            getDoc(doc(getDb(), "questions", rd.questionId)).then((qSnap) => {
+              setQuestion((qSnap.data() as { text: string })?.text ?? "");
+            });
           } else {
             setQuestion("");
           }
@@ -56,14 +58,19 @@ export default function PlayPage() {
     return () => unsubTeam();
   }, [teamId]);
 
+  const autoSubmit = useCallback(async () => {
+    if (!teamId || !round?.id) return;
+    await setAnswer(round.id, teamId, content, true);
+  }, [teamId, round?.id, content]);
+
   useEffect(() => {
-    if (timerRef.current) clearInterval(timerRef.current as any);
+    if (timerRef.current) clearInterval(timerRef.current);
     if (round?.state === "answering" && round?.answerEndsAt) {
       timerRef.current = setInterval(() => {
-        const ms = Math.max(0, round.answerEndsAt - Date.now());
+        const ms = Math.max(0, round.answerEndsAt! - Date.now());
         setRemaining(Math.ceil(ms / 1000));
         if (ms <= 0) {
-          clearInterval(timerRef.current as any);
+          if (timerRef.current) clearInterval(timerRef.current);
           autoSubmit();
         }
       }, 250);
@@ -71,14 +78,9 @@ export default function PlayPage() {
       setRemaining(0);
     }
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current as any);
+      if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [round?.state, round?.answerEndsAt]);
-
-  async function autoSubmit() {
-    if (!teamId || !round?.id) return;
-    await setAnswer(round.id, teamId, content, true);
-  }
+  }, [round?.state, round?.answerEndsAt, autoSubmit]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();

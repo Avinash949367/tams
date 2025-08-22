@@ -2,6 +2,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { useState } from "react";
+import Link from "next/link";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,29 +41,29 @@ export default function RootLayout({
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               {/* Logo */}
-              <a href="/" className="flex items-center space-x-2 group">
+              <Link href="/" className="flex items-center space-x-2 group">
                 <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm group-hover:scale-110 transition-transform">
                   M
                 </div>
                 <span className="font-bold text-xl bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
                   Monopoly Event
                 </span>
-              </a>
+              </Link>
 
               {/* Desktop Navigation */}
               <nav className="hidden md:flex items-center space-x-8">
-                <a href="/register" className="text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors font-medium">
+                <Link href="/register" className="text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors font-medium">
                   Register
-                </a>
-                <a href="/play" className="text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors font-medium">
+                </Link>
+                <Link href="/play" className="text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors font-medium">
                   Play
-                </a>
-                <a href="/admin" className="text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors font-medium">
+                </Link>
+                <Link href="/admin" className="text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors font-medium">
                   Admin
-                </a>
-                <a href="/seed" className="text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors font-medium">
+                </Link>
+                <Link href="/seed" className="text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors font-medium">
                   Seed
-                </a>
+                </Link>
               </nav>
 
               {/* Mobile menu button */}
@@ -85,34 +86,34 @@ export default function RootLayout({
             {/* Mobile Navigation */}
             <div className={`md:hidden border-t border-gray-200 dark:border-gray-700 transition-all duration-300 ${mobileMenuOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
               <div className="px-2 pt-2 pb-3 space-y-1">
-                <a 
+                <Link 
                   href="/register" 
                   className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Register
-                </a>
-                <a 
+                </Link>
+                <Link 
                   href="/play" 
                   className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Play
-                </a>
-                <a 
+                </Link>
+                <Link 
                   href="/admin" 
                   className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Admin
-                </a>
-                <a 
+                </Link>
+                <Link 
                   href="/seed" 
                   className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Seed
-                </a>
+                </Link>
               </div>
             </div>
           </div>

@@ -1,27 +1,33 @@
 "use client";
 import { useEffect, useState } from "react";
-import { registerTeam, refs } from "@/lib/db";
+import { registerTeam } from "@/lib/db";
 import { getDb, getFirebaseAuth } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { useSessionStore } from "@/store/useSessionStore";
-import { Card, CardHeader, CardContent } from "@/components/ui/Card";
+import { Card, CardContent } from "@/components/ui/Card";
 import { Input, Select } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Notice } from "@/components/ui/Notice";
+import type { Venue } from "@/lib/types";
 
 export default function RegisterPage() {
   const router = useRouter();
   const setSession = useSessionStore((s) => s.setSession);
   const [teamName, setTeamName] = useState("");
   const [venueId, setVenueId] = useState("");
-  const [venues, setVenues] = useState<{ id: string; name: string }[]>([]);
+  const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     getDocs(collection(getDb(), "venues")).then((snap) => {
-      setVenues(snap.docs.map((d) => ({ id: d.id, name: (d.data() as any).name })));
+      setVenues(snap.docs.map((d) => ({ 
+        id: d.id, 
+        name: (d.data() as { name: string }).name,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      })));
     });
   }, []);
 
