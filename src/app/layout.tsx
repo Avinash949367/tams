@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+"use client";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { useState } from "react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -12,18 +13,19 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Monopoly Event - Interactive Game",
-  description: "Join the exciting Monopoly event with real-time gameplay and team competition",
-};
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <html lang="en" className="scroll-smooth">
+      <head>
+        <title>Monopoly Event - Interactive Game</title>
+        <meta name="description" content="Join the exciting Monopoly event with real-time gameplay and team competition" />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900`}>
         {/* Animated background */}
         <div className="fixed inset-0 -z-10 overflow-hidden">
@@ -65,27 +67,50 @@ export default function RootLayout({
 
               {/* Mobile menu button */}
               <div className="md:hidden">
-                <button className="p-2 rounded-md text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <button 
+                  className="p-2 rounded-md text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    {mobileMenuOpen ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    )}
                   </svg>
                 </button>
               </div>
             </div>
 
             {/* Mobile Navigation */}
-            <div className="md:hidden border-t border-gray-200 dark:border-gray-700">
+            <div className={`md:hidden border-t border-gray-200 dark:border-gray-700 transition-all duration-300 ${mobileMenuOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
               <div className="px-2 pt-2 pb-3 space-y-1">
-                <a href="/register" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <a 
+                  href="/register" 
+                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
                   Register
                 </a>
-                <a href="/play" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <a 
+                  href="/play" 
+                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
                   Play
                 </a>
-                <a href="/admin" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <a 
+                  href="/admin" 
+                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
                   Admin
                 </a>
-                <a href="/seed" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <a 
+                  href="/seed" 
+                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
                   Seed
                 </a>
               </div>
@@ -104,7 +129,7 @@ export default function RootLayout({
         <footer className="relative z-10 mt-auto border-t border-white/20 bg-white/50 dark:bg-black/30 backdrop-blur-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="text-center text-sm text-gray-600 dark:text-gray-400">
-              <p>&copy; 2024 Monopoly Event. Built with Next.js and Tailwind CSS.</p>
+              <p>&copy; 2024 Monopoly Event. TAMS.</p>
             </div>
           </div>
         </footer>

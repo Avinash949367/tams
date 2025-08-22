@@ -1,14 +1,26 @@
 import React from "react";
+import { cn } from "@/lib/utils";
 
-export function Notice({ type = "info", children }: { type?: "info" | "success" | "warn" | "error"; children: React.ReactNode }) {
+interface NoticeProps {
+  type?: "info" | "success" | "warn" | "error";
+  children: React.ReactNode;
+  className?: string;
+}
+
+export function Notice({ type = "info", children, className }: NoticeProps) {
   const styles: Record<string, string> = {
-    info: "text-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 shadow-sm",
-    success: "text-emerald-800 bg-gradient-to-r from-emerald-50 to-green-50 border-2 border-emerald-200 shadow-sm",
-    warn: "text-amber-800 bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-200 shadow-sm",
-    error: "text-red-800 bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-200 shadow-sm",
+    info: "text-blue-800 dark:text-blue-200 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800",
+    success: "text-emerald-800 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800",
+    warn: "text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800",
+    error: "text-red-800 dark:text-red-200 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800",
   };
+  
   return (
-    <div className={`px-4 py-3 rounded-xl ${styles[type]} backdrop-blur-sm transition-all duration-200`}>
+    <div className={cn(
+      "px-4 py-3 rounded-xl backdrop-blur-sm transition-all duration-200",
+      styles[type],
+      className
+    )}>
       {children}
     </div>
   );
