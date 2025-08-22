@@ -453,213 +453,218 @@ export default function AdminPage() {
             </div>
           </Card>
 
-          <Card>
-            <CardHeader title="Leaderboard" />
-            <div className="space-y-4">
-              {rankings.length === 0 ? (
-                <div className="text-center text-gray-500 py-8">
-                  No team data available
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {rankings.map((team, index) => (
-                    <div key={team.id} className={`flex items-center justify-between p-3 rounded-lg border ${
-                      team.isDisqualified 
-                        ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' 
-                        : 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'
-                    }`}>
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                          index === 0 ? 'bg-yellow-400 text-yellow-900' :
-                          index === 1 ? 'bg-gray-400 text-gray-900' :
-                          index === 2 ? 'bg-amber-600 text-amber-100' :
-                          'bg-blue-500 text-white'
-                        }`}>
-                          {index + 1}
-                        </div>
-                        <div>
-                          <div className="font-semibold">{team.name}</div>
-                          <div className="text-sm text-gray-600 dark:text-gray-400">
-                            Rounds: {team.roundsParticipated || 0}
-                            {team.isDisqualified && team.disqualifiedInRound && (
-                              <span className="ml-2 text-red-600">
-                                (Eliminated in Round {team.disqualifiedInRound})
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-bold text-lg">{team.totalScore || 0} pts</div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">
-                          ${team.currency || 0}
-                          {team.lastRoundScore !== undefined && (
-                            <span className="ml-1 text-green-600">
-                              (+{team.lastRoundScore})
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </Card>
+                     <div className="grid grid-cols-4 gap-6">
+             {/* Left Container - Teams & Answers (3/4 width) */}
+             <div className="col-span-3">
+               <Card>
+                 <CardHeader title="Teams & Answers" />
+                 <div className="space-y-4">
+                   {teams.length === 0 ? (
+                     <div className="text-center text-gray-500 py-8">
+                       No teams registered for this venue
+                     </div>
+                   ) : (
+                     <div className="space-y-4">
+                       {teams.map((team) => {
+                         const teamAnswer = answers.find(a => a.teamId === team.id);
+                         return (
+                           <div key={team.id} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                             <div className="flex items-center justify-between mb-3">
+                               <div>
+                                 <div className="font-semibold text-lg">{team.name}</div>
+                                 <div className="flex items-center gap-4 text-sm">
+                                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                     team.isDisqualified 
+                                       ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300' 
+                                       : 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300'
+                                   }`}>
+                                     {team.isDisqualified ? `Eliminated R${team.disqualifiedInRound || '?'}` : "Active"}
+                                   </span>
+                                   <span className="text-gray-600 dark:text-gray-400">
+                                     Score: {team.totalScore || 0} pts
+                                   </span>
+                                   <span className="text-gray-600 dark:text-gray-400">
+                                     Currency: ${team.currency || 0}
+                                   </span>
+                                   <span className="text-gray-600 dark:text-gray-400">
+                                     Rounds: {team.roundsParticipated || 0}
+                                   </span>
+                                   {team.lastRoundScore !== undefined && (
+                                     <span className="text-green-600 dark:text-green-400">
+                                       Last: +{team.lastRoundScore}
+                                     </span>
+                                   )}
+                                 </div>
+                               </div>
+                               <div className="flex items-center gap-2">
+                                 {teamAnswer && (
+                                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                     teamAnswer.isAutoSubmitted 
+                                       ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300'
+                                       : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300'
+                                   }`}>
+                                     {teamAnswer.isAutoSubmitted ? "Auto-submitted" : "Submitted"}
+                                   </span>
+                                 )}
+                                 {!team.isDisqualified && (
+                                   <Button
+                                     onClick={() => handleDisqualifyTeam(team.id)}
+                                     variant="destructive"
+                                     size="sm"
+                                     disabled={isLoading}
+                                   >
+                                     Disqualify
+                                   </Button>
+                                 )}
+                               </div>
+                             </div>
+                             
+                             {teamAnswer && (
+                               <div className="space-y-3">
+                                 <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded">
+                                   <div className="text-sm font-medium mb-2">Answer:</div>
+                                   <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                                     {teamAnswer.content}
+                                   </div>
+                                 </div>
+                                 {(teamAnswer.selectedOptionIndex !== undefined) && (
+                                   <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded">
+                                     <div className="text-sm font-medium mb-2">Selected Option:</div>
+                                     <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                                       {(() => {
+                                         const idx = teamAnswer.selectedOptionIndex as number;
+                                         const text = questionOptions[idx] ?? `Option ${idx + 1}`;
+                                         return `${idx + 1}. ${text}`;
+                                       })()}
+                                     </div>
+                                   </div>
+                                 )}
+                                 {teamAnswer.reason && (
+                                   <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded">
+                                     <div className="text-sm font-medium mb-2">Reason:</div>
+                                     <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                                       {teamAnswer.reason}
+                                     </div>
+                                   </div>
+                                 )}
+                                 
+                                 {/* Enhanced Scoring Section */}
+                                 <div className="flex items-center gap-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
+                                   <div className="flex items-center gap-2">
+                                     <span className="text-sm font-medium">Score:</span>
+                                     <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                                       {teamAnswer.score !== undefined ? teamAnswer.score : 'Not scored'}
+                                     </span>
+                                   </div>
+                                   
+                                   {teamAnswer.score === undefined && !team.isDisqualified && (
+                                     <div className="flex items-center gap-2">
+                                       <Input
+                                         type="number"
+                                         min="0"
+                                         max="100"
+                                         placeholder="0-100"
+                                         className="w-20"
+                                         onKeyDown={(e) => {
+                                           if (e.key === "Enter") {
+                                             const score = parseInt((e.target as HTMLInputElement).value);
+                                             if (!isNaN(score) && score >= 0 && score <= 100) {
+                                               handleScoreAnswer(teamAnswer.id, score);
+                                             }
+                                           }
+                                         }}
+                                       />
+                                       <Button
+                                         onClick={() => {
+                                           const input = document.querySelector(`input[placeholder="0-100"]`) as HTMLInputElement;
+                                           const score = parseInt(input?.value || '0');
+                                           if (!isNaN(score) && score >= 0 && score <= 100) {
+                                             handleScoreAnswer(teamAnswer.id, score);
+                                           }
+                                         }}
+                                         variant="secondary"
+                                         size="sm"
+                                         disabled={isLoading}
+                                       >
+                                         Score
+                                       </Button>
+                                     </div>
+                                   )}
+                                   
+                                   {teamAnswer.score !== undefined && (
+                                     <div className="text-sm text-green-600 dark:text-green-400">
+                                       ✓ Scored ✓
+                                     </div>
+                                   )}
+                                 </div>
+                                 
+                                 {teamAnswer.feedback && (
+                                   <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+                                     <div className="text-sm font-medium mb-1">Feedback:</div>
+                                     <div className="text-sm text-gray-700 dark:text-gray-300">
+                                       {teamAnswer.feedback}
+                                     </div>
+                                   </div>
+                                 )}
+                               </div>
+                             )}
+                           </div>
+                         );
+                       })}
+                     </div>
+                   )}
+                 </div>
+               </Card>
+             </div>
 
-          <Card>
-            <CardHeader title="Teams & Answers" />
-            <div className="space-y-4">
-              {teams.length === 0 ? (
-                <div className="text-center text-gray-500 py-8">
-                  No teams registered for this venue
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {teams.map((team) => {
-                    const teamAnswer = answers.find(a => a.teamId === team.id);
-                    return (
-                      <div key={team.id} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                        <div className="flex items-center justify-between mb-3">
-                          <div>
-                            <div className="font-semibold text-lg">{team.name}</div>
-                            <div className="flex items-center gap-4 text-sm">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                team.isDisqualified 
-                                  ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300' 
-                                  : 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300'
-                              }`}>
-                                {team.isDisqualified ? `Eliminated R${team.disqualifiedInRound || '?'}` : "Active"}
-                              </span>
-                              <span className="text-gray-600 dark:text-gray-400">
-                                Score: {team.totalScore || 0} pts
-                              </span>
-                              <span className="text-gray-600 dark:text-gray-400">
-                                Currency: ${team.currency || 0}
-                              </span>
-                              <span className="text-gray-600 dark:text-gray-400">
-                                Rounds: {team.roundsParticipated || 0}
-                              </span>
-                              {team.lastRoundScore !== undefined && (
-                                <span className="text-green-600 dark:text-green-400">
-                                  Last: +{team.lastRoundScore}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {teamAnswer && (
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                teamAnswer.isAutoSubmitted 
-                                  ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300'
-                                  : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300'
-                              }`}>
-                                {teamAnswer.isAutoSubmitted ? "Auto-submitted" : "Submitted"}
-                              </span>
-                            )}
-                            {!team.isDisqualified && (
-                              <Button
-                                onClick={() => handleDisqualifyTeam(team.id)}
-                                variant="destructive"
-                                size="sm"
-                                disabled={isLoading}
-                              >
-                                Disqualify
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {teamAnswer && (
-                          <div className="space-y-3">
-                            <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded">
-                              <div className="text-sm font-medium mb-2">Answer:</div>
-                              <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                                {teamAnswer.content}
-                              </div>
-                            </div>
-                            {(teamAnswer.selectedOptionIndex !== undefined) && (
-                              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded">
-                                <div className="text-sm font-medium mb-2">Selected Option:</div>
-                                <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                                  {(() => {
-                                    const idx = teamAnswer.selectedOptionIndex as number;
-                                    const text = questionOptions[idx] ?? `Option ${idx + 1}`;
-                                    return `${idx + 1}. ${text}`;
-                                  })()}
-                                </div>
-                              </div>
-                            )}
-                            {teamAnswer.reason && (
-                              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded">
-                                <div className="text-sm font-medium mb-2">Reason:</div>
-                                <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                                  {teamAnswer.reason}
-                                </div>
-                              </div>
-                            )}
-                            
-                            {/* Scoring Section */}
-                            <div className="flex items-center gap-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium">Score:</span>
-                                <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                                  {teamAnswer.score !== undefined ? teamAnswer.score : 'Not scored'}
-                                </span>
-                              </div>
-                              
-                              {teamAnswer.score === undefined && (
-                                <div className="flex items-center gap-2">
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    placeholder="0-100"
-                                    className="w-20"
-                                                                         onKeyDown={(e) => {
-                                       if (e.key === "Enter") {
-                                         const score = parseInt((e.target as HTMLInputElement).value);
-                                         if (!isNaN(score) && score >= 0 && score <= 100) {
-                                           handleScoreAnswer(teamAnswer.id, score);
-                                         }
-                                       }
-                                     }}
-                                  />
-                                  <Button
-                                    onClick={() => {
-                                      const input = document.querySelector(`input[placeholder="0-100"]`) as HTMLInputElement;
-                                      const score = parseInt(input?.value || '0');
-                                      if (!isNaN(score) && score >= 0 && score <= 100) {
-                                        handleScoreAnswer(teamAnswer.id, score);
-                                      }
-                                    }}
-                                    variant="secondary"
-                                    size="sm"
-                                    disabled={isLoading}
-                                  >
-                                    Score
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                            
-                            {teamAnswer.feedback && (
-                              <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded">
-                                <div className="text-sm font-medium mb-1">Feedback:</div>
-                                <div className="text-sm text-gray-700 dark:text-gray-300">
-                                  {teamAnswer.feedback}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </Card>
+             {/* Right Container - Leaderboard (1/4 width) */}
+             <div className="col-span-1">
+               <Card>
+                 <CardHeader title="Live Leaderboard" />
+                 <div className="space-y-3">
+                   {rankings.length === 0 ? (
+                     <div className="text-center text-gray-500 py-4">
+                       No team data
+                     </div>
+                   ) : (
+                     <div className="space-y-2">
+                       {rankings.slice(0, 8).map((team, index) => (
+                         <div key={team.id} className={`p-2 rounded-lg border text-xs ${
+                           team.isDisqualified 
+                             ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' 
+                             : 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'
+                         }`}>
+                           <div className="flex items-center gap-2 mb-1">
+                             <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                               index === 0 ? 'bg-yellow-400 text-yellow-900' :
+                               index === 1 ? 'bg-gray-400 text-gray-900' :
+                               index === 2 ? 'bg-amber-600 text-amber-100' :
+                               'bg-blue-500 text-white'
+                             }`}>
+                               {index + 1}
+                             </div>
+                             <div className="font-semibold truncate">{team.name}</div>
+                           </div>
+                           <div className="flex justify-between items-center text-xs">
+                             <span className="font-bold">{team.totalScore || 0} pts</span>
+                             <span className="text-gray-600">${team.currency || 0}</span>
+                           </div>
+                           <div className="text-xs text-gray-500 mt-1">
+                             R{team.roundsParticipated || 0}
+                             {team.isDisqualified && team.disqualifiedInRound && (
+                               <span className="ml-1 text-red-600">
+                                 (R{team.disqualifiedInRound})
+                               </span>
+                             )}
+                           </div>
+                         </div>
+                       ))}
+                     </div>
+                   )}
+                 </div>
+               </Card>
+             </div>
+           </div>
         </>
       )}
     </div>
