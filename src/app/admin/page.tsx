@@ -262,7 +262,7 @@ export default function AdminPage() {
                 <div className="flex items-end">
                   <Button
                     onClick={handleStartRoll}
-                    disabled={isLoading || currentRound?.state !== "waiting"}
+                    disabled={isLoading || (currentRound && currentRound.state !== "waiting")}
                     loading={isLoading}
                     className="w-full"
                   >
@@ -271,7 +271,7 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {currentRound && (
+              {currentRound ? (
                 <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                   <div className="text-sm text-blue-700 dark:text-blue-300">
                     Round Status: <span className="font-medium">{getRoundStatusText()}</span>
@@ -282,6 +282,12 @@ export default function AdminPage() {
                       <Dice value={currentRound.dice} size="sm" />
                     </div>
                   )}
+                </div>
+              ) : (
+                <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                  <div className="text-sm text-green-700 dark:text-green-300">
+                    <span className="font-medium">Ready to start!</span> - No active round. Click "Start Roll" to begin a new game round.
+                  </div>
                 </div>
               )}
 

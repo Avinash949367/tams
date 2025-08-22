@@ -40,8 +40,6 @@ export async function startRoll(venueId: string): Promise<Round> {
   }
   const roundData = {
     venueId,
-    dice: undefined,
-    questionId: undefined,
     state: "rolling" as const,
     rollStartedAt: now,
     createdAt: now,
