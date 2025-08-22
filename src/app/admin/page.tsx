@@ -1,209 +1,300 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useSessionStore } from "@/store/useSessionStore";
-import { useRouter } from "next/navigation";
-import { getDb, getFirebaseAuth } from "@/lib/firebase";
-import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, updateDoc, where } from "firebase/firestore";
-import { beginEvaluation, finalizeRoll, refs, awardAndDisqualify, startRoll } from "@/lib/db";
-import { subscribeDoc, subscribeQueryEq } from "@/lib/realtime";
 
-function randomInt(min: number, max: number) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useSessionStore } from "@/store/useSessionStore";
+import { getDocs, collection } from "firebase/firestore";
+import { getDb } from "@/lib/firebase";
+import { startRoll, finalizeRoll, beginEvaluation, awardAndDisqualify } from "@/lib/db";
+import { subscribeDoc } from "@/lib/realtime";
+import { signInAnonymously, getAuth } from "firebase/auth";
+import { Card, CardHeader } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Input, Select } from "@/components/ui/Input";
+import { Notice } from "@/components/ui/Notice";
+import { Dice } from "@/components/ui/Dice";
 
 export default function AdminPage() {
   const router = useRouter();
-  const { venueId } = useSessionStore();
   const setSession = useSessionStore((s) => s.setSession);
+  const [selectedVenueId, setSelectedVenueId] = useState("");
+  const [venues, setVenues] = useState<Array<{ id: string; name: string }>>([]);
+  const [answerTime, setAnswerTime] = useState(60);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const [currentRound, setCurrentRound] = useState<any>(null);
-  const [venues, setVenues] = useState<{ id: string; name: string }[]>([]);
-  const [cooldownRemaining, setCooldownRemaining] = useState<number>(0);
-  const [diceDisplay, setDiceDisplay] = useState<number | null>(null);
-  const [rolling, setRolling] = useState(false);
-  const [questionText, setQuestionText] = useState<string>("");
-  const [evaluateRemaining, setEvaluateRemaining] = useState<number>(0);
+  const [teams, setTeams] = useState<any[]>([]);
   const [answers, setAnswers] = useState<any[]>([]);
-  const [answerDuration, setAnswerDuration] = useState<number>(60);
-  const evalTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Ensure we are signed in anonymously for Firestore writes
-    getFirebaseAuth().catch(() => {});
-    // load venues for selection
-    getDocs(collection(getDb(), "venues")).then((snap) => {
-      setVenues(snap.docs.map((d) => ({ id: d.id, name: (d.data() as any).name })));
-    });
+    async function fetchVenues() {
+      try {
+        const venuesSnapshot = await getDocs(collection(getDb(), "venues"));
+        const venuesData = venuesSnapshot.docs.map(doc => ({
+          id: doc.id,
+          name: doc.data().name
+        }));
+        setVenues(venuesData);
+      } catch (err) {
+        console.error("Error fetching venues:", err);
+        setError("Failed to load venues. Please try again.");
+      }
+    }
+    fetchVenues();
   }, []);
 
   useEffect(() => {
-    if (!venueId) return;
-    const unsubVenue = subscribeDoc({ col: "venues", id: venueId }, (data) => {
-      if (data?.cooldownUntil && data.cooldownUntil > Date.now()) {
-        const iv = setInterval(() => {
-          const ms = Math.max(0, (data.cooldownUntil as number) - Date.now());
-          setCooldownRemaining(Math.ceil(ms / 1000));
-        }, 250);
-        return () => clearInterval(iv as any);
-      } else {
-        setCooldownRemaining(0);
-      }
-      if (data?.currentRoundId) {
-        const unsubRound = subscribeDoc({ col: "rounds", id: data.currentRoundId }, async (rd) => {
-          if (!rd) { setCurrentRound(null); setQuestionText(""); return; }
-          setCurrentRound(rd);
-          if (rd.questionId) {
-            const qSnap = await getDoc(doc(getDb(), "questions", rd.questionId));
-            setQuestionText((qSnap.data() as any)?.text ?? "");
-          } else {
-            setQuestionText("");
-          }
+    if (!selectedVenueId) return;
+
+    // Ensure anonymous authentication
+    const auth = getAuth();
+    if (!auth.currentUser) {
+      signInAnonymously(auth);
+    }
+
+    const unsubVenue = subscribeDoc({ col: "venues", id: selectedVenueId }, async (venue) => {
+      if (venue?.currentRoundId) {
+        const unsubRound = subscribeDoc({ col: "rounds", id: venue.currentRoundId }, (round) => {
+          setCurrentRound(round);
         });
         return () => unsubRound();
       } else {
         setCurrentRound(null);
-        setQuestionText("");
       }
     });
-    return () => unsubVenue();
-  }, [venueId]);
 
-  useEffect(() => {
-    if (!currentRound?.id) return;
-    if (currentRound.state === "evaluating" && currentRound.evaluateEndsAt) {
-      if (evalTimerRef.current) clearInterval(evalTimerRef.current as any);
-      evalTimerRef.current = setInterval(() => {
-        const ms = Math.max(0, currentRound.evaluateEndsAt - Date.now());
-        setEvaluateRemaining(Math.ceil(ms / 1000));
-      }, 250);
-    } else {
-      setEvaluateRemaining(0);
-      if (evalTimerRef.current) clearInterval(evalTimerRef.current as any);
-    }
+    const unsubTeams = subscribeDoc({ col: "teams", id: selectedVenueId }, async () => {
+      const teamsSnapshot = await getDocs(collection(getDb(), "teams"));
+      const teamsData = teamsSnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter((team: any) => team.venueId === selectedVenueId);
+      setTeams(teamsData);
+    });
+
     return () => {
-      if (evalTimerRef.current) clearInterval(evalTimerRef.current as any);
+      unsubVenue();
+      unsubTeams();
     };
-  }, [currentRound?.state, currentRound?.evaluateEndsAt, currentRound?.id]);
+  }, [selectedVenueId]);
 
   useEffect(() => {
     if (!currentRound?.id) return;
-    const unsub = subscribeQueryEq({ col: "answers", field: "roundId", value: currentRound.id }, (rows) => setAnswers(rows));
-    return () => unsub();
+    const unsubAnswers = subscribeDoc({ col: "answers", id: currentRound.id }, async () => {
+      const answersSnapshot = await getDocs(collection(getDb(), "answers"));
+      const answersData = answersSnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter((answer: any) => answer.roundId === currentRound.id);
+      setAnswers(answersData);
+    });
+    return () => unsubAnswers();
   }, [currentRound?.id]);
 
   async function handleStartRoll() {
-    if (!venueId) return;
-    await getFirebaseAuth();
-    setRolling(true);
-    const r = await startRoll(venueId);
-    // Animate dice for both admin and users via state 'rolling'
-    let ticks = 20;
-    const iv = setInterval(() => {
-      setDiceDisplay(randomInt(1, 6));
-      ticks--;
-      if (ticks <= 0) {
-        clearInterval(iv);
-        const finalValue = randomInt(1, 6);
-        setDiceDisplay(finalValue);
-        chooseQuestionAndLock(r.id, finalValue);
-        setRolling(false);
-      }
-    }, 100);
-  }
-
-  async function chooseQuestionAndLock(roundId: string, finalDice: number) {
-    // pick a random question
-    const qs = await getDocs(collection(getDb(), "questions"));
-    const arr = qs.docs;
-    const chosen = arr[Math.floor(Math.random() * Math.max(1, arr.length))];
-    await finalizeRoll(roundId, finalDice, chosen?.id || "", answerDuration * 1000);
-  }
-
-  async function openEvaluation() {
-    if (!currentRound?.id) return;
-    await beginEvaluation(currentRound.id);
-  }
-
-  async function finishRound() {
-    if (!venueId) return;
-    // Determine lowest scored teams
-    const scored = answers.filter((a) => typeof a.score === "number");
-    let lowestTeams: string[] = [];
-    if (scored.length > 0) {
-      const minScore = Math.min(...scored.map((a: any) => a.score as number));
-      lowestTeams = scored.filter((a: any) => a.score === minScore).map((a: any) => a.teamId as string);
+    if (!selectedVenueId) {
+      setError("Please select a venue first.");
+      return;
     }
-    await awardAndDisqualify(venueId, lowestTeams);
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const auth = getAuth();
+      if (!auth.currentUser) {
+        await signInAnonymously(auth);
+      }
+
+      await startRoll(selectedVenueId);
+      setSession({ venueId: selectedVenueId, isAdmin: true });
+    } catch (err: any) {
+      console.error("Start roll error:", err);
+      setError(err.message || "Failed to start roll. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
-  async function setScore(ansId: string, score: number) {
-    await updateDoc(doc(getDb(), "answers", ansId), { score });
+  async function handleFinalizeRoll() {
+    if (!currentRound?.id) return;
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const dice = Math.floor(Math.random() * 6) + 1;
+      const questionsSnapshot = await getDocs(collection(getDb(), "questions"));
+      const questions = questionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
+      
+      await finalizeRoll(currentRound.id, dice, randomQuestion.id, answerTime * 1000);
+    } catch (err: any) {
+      console.error("Finalize roll error:", err);
+      setError(err.message || "Failed to finalize roll. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleBeginEvaluation() {
+    if (!currentRound?.id) return;
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      await beginEvaluation(currentRound.id);
+    } catch (err: any) {
+      console.error("Begin evaluation error:", err);
+      setError(err.message || "Failed to begin evaluation. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleAwardAndDisqualify() {
+    if (!selectedVenueId) return;
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const lowestScoringTeam = teams
+        .filter((team: any) => !team.isDisqualified)
+        .sort((a: any, b: any) => (a.currency || 0) - (b.currency || 0))[0];
+
+      if (lowestScoringTeam) {
+        await awardAndDisqualify(selectedVenueId, [lowestScoringTeam.id]);
+      }
+    } catch (err: any) {
+      console.error("Award and disqualify error:", err);
+      setError(err.message || "Failed to award and disqualify. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
-    <div className="min-h-screen p-6 max-w-5xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold">Admin Control</h1>
-      <div className="flex flex-wrap items-end gap-3">
-        <div>
-          <label className="text-sm">Venue</label>
-          <select value={venueId || ""} onChange={(e) => setSession({ venueId: e.target.value, isAdmin: true })} className="border rounded px-3 py-2 ml-2">
-            <option value="">Select venue</option>
-            {venues.map((v) => (
-              <option key={v.id} value={v.id}>{v.name}</option>
-            ))}
-          </select>
-        </div>
-        {cooldownRemaining > 0 && (
-          <div className="px-3 py-2 rounded bg-yellow-50 border text-yellow-800">Cooldown {cooldownRemaining}s</div>
-        )}
-      </div>
-      {!currentRound && venueId && (
-        <div className="flex items-end gap-3">
-          <div>
-            <label className="text-sm">Answer time (seconds)</label>
-            <input type="number" min={10} max={300} value={answerDuration} onChange={(e) => setAnswerDuration(Number(e.target.value))} className="border rounded px-2 py-1 w-36 ml-2" />
-          </div>
-          <button onClick={handleStartRoll} className="bg-black text-white px-4 py-2 rounded disabled:opacity-50" disabled={rolling}>
-            {rolling ? "Rolling..." : "Start Roll"}
-          </button>
-        </div>
-      )}
-
-      {currentRound?.state === "rolling" && (
-        <div className="text-center space-y-2">
-          <div className="text-sm">Dice is rolling...</div>
-          <div className="text-7xl">{diceDisplay ?? "🎲"}</div>
-        </div>
-      )}
-
-      {currentRound?.state === "answering" && (
-        <div className="space-y-3">
-          <div className="text-sm">Question</div>
-          <div className="p-4 border rounded">{questionText}</div>
-          <button onClick={openEvaluation} className="bg-blue-600 text-white px-4 py-2 rounded">Start Evaluation</button>
-        </div>
-      )}
-
-      {currentRound?.state === "evaluating" && (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader 
+          title="Admin Control" 
+          subtitle="Manage the Monopoly event for your venue"
+        />
+        
         <div className="space-y-4">
-          <div className="text-sm">Time remaining</div>
-          <div className="font-mono">{evaluateRemaining}s</div>
-          <div className="space-y-2">
-            <div className="font-semibold">Answers</div>
-            <div className="grid gap-3">
-              {answers.map((a) => (
-                <div key={a.id} className="border rounded p-3">
-                  <div className="text-sm text-gray-500">Team: {a.teamId}</div>
-                  <div className="whitespace-pre-wrap">{a.content || "(empty)"}</div>
-                  <div className="flex items-center gap-2 mt-2">
-                    <input type="number" min={0} max={1000} defaultValue={a.score ?? 0} onChange={(e) => setScore(a.id, Number(e.target.value))} className="border rounded px-2 py-1 w-28" />
-                    <span className="text-sm">/ 1000</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <Select
+            label="Venue"
+            value={selectedVenueId}
+            onChange={(e) => setSelectedVenueId(e.target.value)}
+          >
+            <option value="">Select venue</option>
+            {venues.map((venue) => (
+              <option key={venue.id} value={venue.id}>
+                {venue.name}
+              </option>
+            ))}
+          </Select>
+
+          <Input
+            label="Answer time (seconds)"
+            type="number"
+            value={answerTime}
+            onChange={(e) => setAnswerTime(Number(e.target.value))}
+            min={30}
+            max={300}
+          />
+
+          {error && <Notice type="error">{error}</Notice>}
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button 
+              onClick={handleStartRoll}
+              disabled={isLoading || !selectedVenueId || currentRound?.state === "rolling"}
+              className="flex-1"
+            >
+              {isLoading ? "Starting..." : "Start Roll"}
+            </Button>
+            
+            <Button 
+              onClick={handleFinalizeRoll}
+              disabled={isLoading || currentRound?.state !== "rolling"}
+              variant="secondary"
+              className="flex-1"
+            >
+              {isLoading ? "Finalizing..." : "Finalize Roll"}
+            </Button>
           </div>
-          <button onClick={finishRound} className="bg-green-600 text-white px-4 py-2 rounded">Finish Round</button>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button 
+              onClick={handleBeginEvaluation}
+              disabled={isLoading || currentRound?.state !== "answering"}
+              variant="primary"
+              className="flex-1"
+            >
+              {isLoading ? "Starting..." : "Begin Evaluation"}
+            </Button>
+            
+            <Button 
+              onClick={handleAwardAndDisqualify}
+              disabled={isLoading || currentRound?.state !== "evaluating"}
+              variant="secondary"
+              className="flex-1"
+            >
+              {isLoading ? "Processing..." : "Award & Disqualify"}
+            </Button>
+          </div>
         </div>
+      </Card>
+
+      {currentRound && (
+        <Card>
+          <CardHeader title="Current Round Status" />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-3 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200">
+                <div className="text-sm font-medium text-blue-800">State</div>
+                <div className="text-blue-900 font-semibold capitalize">{currentRound.state}</div>
+              </div>
+              <div className="p-3 rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-200">
+                <div className="text-sm font-medium text-emerald-800">Teams</div>
+                <div className="text-emerald-900 font-semibold">{teams.length}</div>
+              </div>
+            </div>
+            
+            {currentRound.state === "rolling" && (
+              <div className="flex justify-center">
+                <Dice rolling value={currentRound.dice} />
+              </div>
+            )}
+            
+            {currentRound.state === "answering" && (
+              <div className="p-3 rounded-lg bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-200">
+                <div className="text-sm font-medium text-amber-800">Answers Received</div>
+                <div className="text-amber-900 font-semibold">{answers.length} / {teams.length}</div>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {teams.length > 0 && (
+        <Card>
+          <CardHeader title="Teams" subtitle={`${teams.length} teams registered`} />
+          <div className="space-y-2">
+            {teams.map((team: any) => (
+              <div key={team.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-200">
+                <div>
+                  <div className="font-medium">{team.name}</div>
+                  <div className="text-sm text-gray-500">Currency: {team.currency || 0}</div>
+                </div>
+                {team.isDisqualified && (
+                  <div className="text-red-600 text-sm font-medium">Disqualified</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
       )}
     </div>
   );

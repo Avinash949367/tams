@@ -1,139 +1,149 @@
-export default function Home() {
+import Link from "next/link";
+import { Card, CardHeader } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+
+export default function HomePage() {
   return (
-    <div className="min-h-[80vh] flex flex-col items-center justify-center p-4 sm:p-8">
+    <div className="space-y-8">
       {/* Hero Section */}
-      <div className="text-center mb-12 animate-fade-in">
-        <h1 className="heading-responsive font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 bg-clip-text text-transparent mb-4">
-          Monopoly Event
-        </h1>
-        <p className="text-responsive text-gray-600 dark:text-gray-300 max-w-2xl mx-auto leading-relaxed">
-          Experience the thrill of real-time Monopoly gameplay with interactive challenges, 
-          team competition, and exciting rewards. Join the adventure today!
-        </p>
-      </div>
-
-      {/* Feature Cards */}
-      <div className="w-full max-w-6xl">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Register Card */}
-          <a href="/register" className="group">
-            <div className="card-hover bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-white/20 rounded-2xl p-6 h-full flex flex-col">
-              <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl mb-4 group-hover:scale-110 transition-transform">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
-                Register Team
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300 flex-grow">
-                Create your team and join a venue to start playing. Choose your venue wisely!
-              </p>
-              <div className="mt-4 text-purple-600 dark:text-purple-400 text-sm font-medium group-hover:translate-x-1 transition-transform">
-                Get Started →
-              </div>
-            </div>
-          </a>
-
-          {/* Play Card */}
-          <a href="/play" className="group">
-            <div className="card-hover bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-white/20 rounded-2xl p-6 h-full flex flex-col">
-              <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl mb-4 group-hover:scale-110 transition-transform">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
-                Play Game
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300 flex-grow">
-                Wait for the dice roll and answer challenging questions in real-time.
-              </p>
-              <div className="mt-4 text-purple-600 dark:text-purple-400 text-sm font-medium group-hover:translate-x-1 transition-transform">
-                Start Playing →
-              </div>
-            </div>
-          </a>
-
-          {/* Admin Card */}
-          <a href="/admin" className="group">
-            <div className="card-hover bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-white/20 rounded-2xl p-6 h-full flex flex-col">
-              <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl mb-4 group-hover:scale-110 transition-transform">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
-                Admin Panel
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300 flex-grow">
-                Control dice rolls, manage questions, and evaluate team answers.
-              </p>
-              <div className="mt-4 text-purple-600 dark:text-purple-400 text-sm font-medium group-hover:translate-x-1 transition-transform">
-                Manage Game →
-              </div>
-            </div>
-          </a>
-
-          {/* Seed Card */}
-          <a href="/seed" className="group">
-            <div className="card-hover bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-white/20 rounded-2xl p-6 h-full flex flex-col">
-              <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl mb-4 group-hover:scale-110 transition-transform">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
-                Seed Data
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300 flex-grow">
-                Add sample venues and questions to get started quickly.
-              </p>
-              <div className="mt-4 text-purple-600 dark:text-purple-400 text-sm font-medium group-hover:translate-x-1 transition-transform">
-                Setup Data →
-              </div>
-            </div>
-          </a>
-        </div>
-      </div>
-
-      {/* Stats Section */}
-      <div className="mt-16 w-full max-w-4xl">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="text-center">
-            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-2">100+</div>
-            <div className="text-sm text-gray-600 dark:text-gray-300">Active Players</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">50+</div>
-            <div className="text-sm text-gray-600 dark:text-gray-300">Questions Available</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-2">24/7</div>
-            <div className="text-sm text-gray-600 dark:text-gray-300">Real-time Gaming</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Call to Action */}
-      <div className="mt-16 text-center animate-fade-in">
-        <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl p-8 text-white">
-          <h2 className="text-2xl font-bold mb-4">Ready to Start Your Adventure?</h2>
-          <p className="text-purple-100 mb-6 max-w-md mx-auto">
-            Join thousands of players in the most exciting Monopoly event ever created!
+      <div className="text-center space-y-6">
+        <div className="space-y-4">
+          <h1 className="text-4xl sm:text-6xl font-bold bg-gradient-to-r from-fuchsia-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+            🎲 Monopoly Event
+          </h1>
+          <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto">
+            Join the exciting interactive Monopoly event with real-time dice rolling, 
+            team competition, and dynamic question challenges!
           </p>
-          <a 
-            href="/register" 
-            className="inline-flex items-center px-6 py-3 bg-white text-purple-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors btn-animate"
-          >
-            Get Started Now
-            <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-            </svg>
-          </a>
         </div>
       </div>
+
+      {/* Navigation Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Card className="hover:scale-105 transition-transform duration-300">
+          <CardHeader 
+            title="Team Registration" 
+            subtitle="Register your team and join the game"
+          />
+          <div className="space-y-4">
+            <div className="text-center text-4xl mb-4">👥</div>
+            <p className="text-gray-600 text-sm">
+              Create your team, select a venue, and get ready to compete in the Monopoly event.
+            </p>
+            <Link href="/register">
+              <Button className="w-full">Register Team</Button>
+            </Link>
+          </div>
+        </Card>
+
+        <Card className="hover:scale-105 transition-transform duration-300">
+          <CardHeader 
+            title="Play Game" 
+            subtitle="Join the live game session"
+          />
+          <div className="space-y-4">
+            <div className="text-center text-4xl mb-4">🎮</div>
+            <p className="text-gray-600 text-sm">
+              Watch dice rolls, answer questions, and compete with other teams in real-time.
+            </p>
+            <Link href="/play">
+              <Button className="w-full">Start Playing</Button>
+            </Link>
+          </div>
+        </Card>
+
+        <Card className="hover:scale-105 transition-transform duration-300">
+          <CardHeader 
+            title="Admin Panel" 
+            subtitle="Manage the event and control the game"
+          />
+          <div className="space-y-4">
+            <div className="text-center text-4xl mb-4">⚙️</div>
+            <p className="text-gray-600 text-sm">
+              Control dice rolls, manage questions, evaluate answers, and oversee the competition.
+            </p>
+            <Link href="/admin">
+              <Button className="w-full">Admin Access</Button>
+            </Link>
+          </div>
+        </Card>
+
+        <Card className="hover:scale-105 transition-transform duration-300">
+          <CardHeader 
+            title="Seed Data" 
+            subtitle="Initialize sample data"
+          />
+          <div className="space-y-4">
+            <div className="text-center text-4xl mb-4">🌱</div>
+            <p className="text-gray-600 text-sm">
+              Add sample venues and questions to get started with the event setup.
+            </p>
+            <Link href="/seed">
+              <Button className="w-full">Seed Data</Button>
+            </Link>
+          </div>
+        </Card>
+
+        <Card className="hover:scale-105 transition-transform duration-300">
+          <CardHeader 
+            title="Debug Tools" 
+            subtitle="Troubleshoot and configure"
+          />
+          <div className="space-y-4">
+            <div className="text-center text-4xl mb-4">🔧</div>
+            <p className="text-gray-600 text-sm">
+              Configure Firebase settings and debug connection issues.
+            </p>
+            <Link href="/debug">
+              <Button className="w-full">Debug Panel</Button>
+            </Link>
+          </div>
+        </Card>
+
+        <Card className="hover:scale-105 transition-transform duration-300">
+          <CardHeader 
+            title="Game Rules" 
+            subtitle="How to play and win"
+          />
+          <div className="space-y-4">
+            <div className="text-center text-4xl mb-4">📋</div>
+            <p className="text-gray-600 text-sm">
+              Learn about the game mechanics, scoring system, and competition rules.
+            </p>
+            <Button className="w-full" variant="secondary">View Rules</Button>
+          </div>
+        </Card>
+      </div>
+
+      {/* Features Section */}
+      <Card>
+        <CardHeader 
+          title="Game Features" 
+          subtitle="What makes this Monopoly event special"
+        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="text-center p-4 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200">
+            <div className="text-2xl mb-2">🎲</div>
+            <div className="font-semibold text-blue-900">Real-time Dice</div>
+            <div className="text-sm text-blue-700">Live dice rolling with animations</div>
+          </div>
+          <div className="text-center p-4 rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-200">
+            <div className="text-2xl mb-2">⏱️</div>
+            <div className="font-semibold text-emerald-900">Timed Challenges</div>
+            <div className="text-sm text-emerald-700">Quick thinking under pressure</div>
+          </div>
+          <div className="text-center p-4 rounded-lg bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-200">
+            <div className="text-2xl mb-2">🏆</div>
+            <div className="font-semibold text-amber-900">Team Competition</div>
+            <div className="text-sm text-amber-700">Compete with other teams</div>
+          </div>
+          <div className="text-center p-4 rounded-lg bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200">
+            <div className="text-2xl mb-2">💰</div>
+            <div className="font-semibold text-purple-900">Currency System</div>
+            <div className="text-sm text-purple-700">Earn and manage your wealth</div>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }
