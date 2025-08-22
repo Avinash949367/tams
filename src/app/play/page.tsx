@@ -59,9 +59,9 @@ export default function PlayPage() {
   }, [teamId]);
 
   const autoSubmit = useCallback(async () => {
-    if (!teamId || !round?.id) return;
+    if (!teamId || !round?.id || isDisqualified) return;
     await setAnswer(round.id, teamId, content, true);
-  }, [teamId, round?.id, content]);
+  }, [teamId, round?.id, content, isDisqualified]);
 
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -84,7 +84,7 @@ export default function PlayPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!teamId || !round?.id) return;
+    if (!teamId || !round?.id || isDisqualified) return;
     setSubmitting(true);
     try {
       await setAnswer(round.id, teamId, content, false);
@@ -163,7 +163,7 @@ export default function PlayPage() {
       )}
 
       {/* Question answering */}
-      {round?.state === "answering" && (
+      {round?.state === "answering" && !isDisqualified && (
         <Card variant="elevated">
           <CardHeader 
             title="Question" 
@@ -206,6 +206,13 @@ export default function PlayPage() {
               </form>
             </div>
           </CardContent>
+        </Card>
+      )}
+      {round?.state === "answering" && isDisqualified && (
+        <Card variant="outlined" className="border-red-200 dark:border-red-800">
+          <div className="p-6 text-center text-red-800 dark:text-red-200">
+            You are disqualified for this round and cannot answer.
+          </div>
         </Card>
       )}
 

@@ -61,6 +61,12 @@ export async function finalizeRoll(roundId: string, dice: number, questionId: st
 }
 
 export async function setAnswer(roundId: string, teamId: string, content: string, autoSubmitted: boolean): Promise<void> {
+  // Prevent disqualified teams from submitting answers
+  const teamSnap = await getDoc(refs.team(teamId));
+  const team = teamSnap.data() as Team | undefined;
+  if (team?.isDisqualified) {
+    throw new Error("Team is disqualified for this round.");
+  }
   const now = Date.now();
   const answerData = {
     roundId,
@@ -105,6 +111,13 @@ export async function awardAndDisqualify(venueId: string, disqualifiedTeamIds: s
       const newCurrency = Math.min(1000, (team?.currency ?? 0) + a.score);
       await updateDoc(teamRef, { currency: newCurrency, updatedAt: Date.now() });
     }
+  }
+
+  // Clear previous round disqualifications for this venue so the flag applies for exactly one round
+  const disqQ = query(refs.teams(), where("venueId", "==", venueId), where("isDisqualified", "==", true));
+  const disqTeams = await getDocs(disqQ);
+  for (const t of disqTeams.docs) {
+    await updateDoc(refs.team(t.id), { isDisqualified: false, updatedAt: Date.now() });
   }
 
   // Disqualify lowest scoring teams
