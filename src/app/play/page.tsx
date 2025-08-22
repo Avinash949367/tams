@@ -95,11 +95,12 @@ export default function PlayPage() {
 
   const statusText = useMemo(() => {
     if (!round) return "Waiting for admin to start the roll...";
+    if (isDisqualified) return "Disqualified for this round";
     if (round.state === "rolling") return "Dice is rolling...";
     if (round.state === "answering") return "Answer the question";
     if (round.state === "evaluating") return "Admin is evaluating";
     return "";
-  }, [round]);
+  }, [round, isDisqualified]);
 
   const statusColor = useMemo(() => {
     if (!round) return "text-gray-600 dark:text-gray-400";
@@ -146,7 +147,7 @@ export default function PlayPage() {
       )}
 
       {/* Dice rolling animation */}
-      {round?.state === "rolling" && (
+      {round?.state === "rolling" && !isDisqualified && (
         <Card variant="glass" className="text-center py-12">
           <div className="flex flex-col items-center gap-6">
             <div className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
@@ -158,6 +159,13 @@ export default function PlayPage() {
             <div className="text-sm text-gray-600 dark:text-gray-400">
               Wait for the result and get ready to answer!
             </div>
+          </div>
+        </Card>
+      )}
+      {round?.state === "rolling" && isDisqualified && (
+        <Card variant="outlined" className="border-red-200 dark:border-red-800">
+          <div className="p-6 text-center text-red-800 dark:text-red-200">
+            You are disqualified for this round and will be skipped.
           </div>
         </Card>
       )}
