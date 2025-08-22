@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { getDocs, collection, updateDoc, doc, getDoc } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
-import { startRoll, finalizeRoll, beginEvaluation, awardAndDisqualify, scoreTeam, refs } from "@/lib/db";
+import { startRoll, finalizeRoll, beginEvaluation, awardAndDisqualify, scoreTeam, endGame, refs } from "@/lib/db";
 import { subscribeDoc } from "@/lib/realtime";
 import { signInAnonymously, getAuth } from "firebase/auth";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -40,6 +40,7 @@ export default function AdminPage() {
   const [isAuthed, setIsAuthed] = useState(false);
   const [uname, setUname] = useState("");
   const [pass, setPass] = useState("");
+  const [gameEnded, setGameEnded] = useState(false);
 
   useEffect(() => {
     async function fetchVenues() {
@@ -88,6 +89,8 @@ export default function AdminPage() {
         setQuestionText("");
         setQuestionOptions([]);
       }
+      // Check if game has ended
+      setGameEnded(Boolean(venue?.gameEnded));
     });
 
     const unsubTeams = subscribeDoc({ col: "teams", id: selectedVenueId }, () => {
@@ -249,6 +252,25 @@ export default function AdminPage() {
     }
   }
 
+  async function handleEndGame() {
+    if (!selectedVenueId) {
+      setError("No venue selected.");
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      await endGame(selectedVenueId);
+    } catch (err) {
+      console.error("Error ending game:", err);
+      setError("Failed to end game. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   const getRoundStatusText = () => {
     if (!currentRound) return "No active round";
     switch (currentRound.state) {
@@ -334,7 +356,7 @@ export default function AdminPage() {
                 <div className="flex items-end">
                   <Button
                     onClick={handleStartRoll}
-                    disabled={isLoading || Boolean(currentRound && currentRound.state !== "waiting")}
+                    disabled={isLoading || Boolean(currentRound && currentRound.state !== "waiting") || gameEnded}
                     loading={isLoading}
                     className="w-full"
                   >
@@ -364,6 +386,12 @@ export default function AdminPage() {
                       <Dice value={currentRound.dice} size="sm" />
                     </div>
                   )}
+                </div>
+              ) : gameEnded ? (
+                <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <div className="text-sm text-red-700 dark:text-red-300">
+                    <span className="font-medium">Game Ended</span> - All teams have been disqualified. The game is over.
+                  </div>
                 </div>
               ) : (
                 <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
@@ -397,6 +425,15 @@ export default function AdminPage() {
                   variant="destructive"
                 >
                   Award & Disqualify
+                </Button>
+                <Button
+                  onClick={handleEndGame}
+                  disabled={isLoading}
+                  loading={isLoading}
+                  variant="destructive"
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  End Game
                 </Button>
               </div>
             </div>

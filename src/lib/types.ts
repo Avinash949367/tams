@@ -3,6 +3,7 @@ export interface Venue {
   name: string;
   currentRoundId?: string;
   cooldownUntil?: number;
+  gameEnded?: boolean;
   createdAt: number;
   updatedAt: number;
 }

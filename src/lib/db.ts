@@ -33,11 +33,17 @@ export async function registerTeam(name: string, venueId: string): Promise<Team>
 
 export async function startRoll(venueId: string): Promise<Round> {
   const venueSnap = await getDoc(refs.venue(venueId));
-  const venue = venueSnap.data() as { cooldownUntil?: number };
+  const venue = venueSnap.data() as { cooldownUntil?: number; gameEnded?: boolean };
   const now = Date.now();
+  
+  if (venue?.gameEnded) {
+    throw new Error("Game has ended. Cannot start new rounds.");
+  }
+  
   if (venue?.cooldownUntil && venue.cooldownUntil > now) {
     throw new Error("Cooldown active. Please wait before starting next roll.");
   }
+  
   const roundData = {
     venueId,
     state: "rolling" as const,
@@ -122,14 +128,7 @@ export async function awardAndDisqualify(venueId: string, disqualifiedTeamIds: s
     }
   }
 
-  // Clear previous round disqualifications for this venue so the flag applies for exactly one round
-  const disqQ = query(refs.teams(), where("venueId", "==", venueId), where("isDisqualified", "==", true));
-  const disqTeams = await getDocs(disqQ);
-  for (const t of disqTeams.docs) {
-    await updateDoc(refs.team(t.id), { isDisqualified: false, updatedAt: Date.now() });
-  }
-
-  // Disqualify lowest scoring teams
+  // Disqualify lowest scoring teams (permanent - no clearing of previous disqualifications)
   for (const teamId of disqualifiedTeamIds) {
     await updateDoc(refs.team(teamId), { isDisqualified: true, updatedAt: Date.now() });
   }
@@ -138,6 +137,25 @@ export async function awardAndDisqualify(venueId: string, disqualifiedTeamIds: s
   await updateDoc(refs.venue(venueId), { 
     currentRoundId: null, 
     cooldownUntil: Date.now() + 30_000,
+    updatedAt: Date.now(),
+  });
+}
+
+export async function endGame(venueId: string): Promise<void> {
+  // Mark all teams as inactive and clear current round
+  const teamsQ = query(refs.teams(), where("venueId", "==", venueId));
+  const teams = await getDocs(teamsQ);
+  for (const team of teams.docs) {
+    await updateDoc(refs.team(team.id), { 
+      isDisqualified: true, 
+      updatedAt: Date.now() 
+    });
+  }
+  
+  // Clear current round and set game as ended
+  await updateDoc(refs.venue(venueId), { 
+    currentRoundId: null, 
+    gameEnded: true,
     updatedAt: Date.now(),
   });
 }
