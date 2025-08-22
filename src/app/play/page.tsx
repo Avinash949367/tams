@@ -59,7 +59,7 @@ export default function PlayPage() {
 
   useEffect(() => {
     if (!teamId) return;
-    const unsubTeam = subscribeDoc({ col: "teams", id: teamId }, (t) => {
+    const unsubTeam = subscribeDoc<Team>({ col: "teams", id: teamId }, (t) => {
       setIsDisqualified(Boolean(t?.isDisqualified));
       setTeamData(t);
     });

@@ -60,6 +60,16 @@ export default function AdminPage() {
     fetchVenues();
   }, []);
 
+  const refreshRankings = useCallback(async () => {
+    if (!selectedVenueId) return;
+    try {
+      const rankingsData = await getTeamRankings(selectedVenueId);
+      setRankings(rankingsData);
+    } catch (err) {
+      console.error("Error fetching rankings:", err);
+    }
+  }, [selectedVenueId]);
+
   useEffect(() => {
     if (!selectedVenueId) return;
 
@@ -202,16 +212,6 @@ export default function AdminPage() {
       setIsLoading(false);
     }
   }
-
-  const refreshRankings = useCallback(async () => {
-    if (!selectedVenueId) return;
-    try {
-      const rankingsData = await getTeamRankings(selectedVenueId);
-      setRankings(rankingsData);
-    } catch (err) {
-      console.error("Error fetching rankings:", err);
-    }
-  }, [selectedVenueId]);
 
   function handleAdminLogin(e: React.FormEvent) {
     e.preventDefault();
